@@ -53,7 +53,7 @@ if uploaded_file:
         with st.spinner("AIが解析中...（gemini-pro-vision使用）"):
             try:
                 # 安定版モデルを指定
-                model = genai.GenerativeModel('gemini-pro-vision')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 prompt = f"""
                 この画像はシフト表です。以下のデータをJSON形式で抽出してください。

@@ -6,72 +6,62 @@ import urllib.parse
 from datetime import datetime
 
 st.set_page_config(page_title="シフト読み取りアプリ", page_icon="📅")
-st.title("📅 シフト読み取りアプリ（診断モード）")
+st.title("📅 シフト読み取りアプリ")
 
-# --- 🔑 APIキーの診断と接続 ---
+# --- 🛠 システム診断エリア ---
+with st.expander("🛠 システム診断（エラー時はここを見て！）", expanded=False):
+    st.write(f"Streamlit Version: {st.__version__}")
+    # ライブラリのバージョンを表示
+    try:
+        st.write(f"Google Generative AI Version: {genai.__version__}")
+        if genai.__version__ < "0.8.3":
+            st.error("⚠️ ライブラリが古いです！requirements.txtを確認してください。")
+    except:
+        st.write("バージョン確認不可")
+
+# --- 🔑 APIキー設定 ---
 try:
-    # 1. Secrets自体が読めるかチェック
-    if not st.secrets:
-        st.error("❌ エラー: 「Secrets（金庫）」が空っぽです！")
-        st.info("対処法: Manage app → Settings → Secrets にキーを保存してください。")
-        st.stop()
-
-    # 2. キーの名前が合っているかチェック
     if "GEMINI_API_KEY" not in st.secrets:
-        st.error("❌ エラー: 'GEMINI_API_KEY' という名前のキーが見つかりません。")
-        st.write("👇 現在保存されているキーの名前一覧:")
-        st.write(list(st.secrets.keys()))
-        st.info("対処法: Secretsの書き方が `GEMINI_API_KEY = \"AIza...\"` になっているか確認してください。")
+        st.error("❌ エラー: APIキーが見つかりません。Secretsの設定を確認してください。")
         st.stop()
 
-    # 3. 接続テスト
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    
-    st.success("✅ APIキーの読み込みに成功しました！")
+    st.success(f"✅ APIキー接続OK！ (Version: {genai.__version__})")
 
 except Exception as e:
-    st.error(f"❌ 予期せぬエラーが発生しました: {e}")
+    st.error(f"❌ 設定エラー: {e}")
     st.stop()
 
-# --- 📱 ここからアプリ本編 ---
+# --- 📱 アプリ本編 ---
+my_name = st.text_input("あなたの名前（シフト表と同じ表記で）", "飯田")
+hourly_wage = st.number_input("時給", value=1100)
+year_month = st.text_input("年月（例：2026-01）", "2026-01")
 
-# ユーザー設定
-with st.expander("⚙️ 設定（名前・時給）", expanded=True):
-    my_name = st.text_input("あなたの名前（シフト表と同じ漢字で）", "飯田")
-    hourly_wage = st.number_input("時給", value=1100)
-    year_month = st.text_input("年月（例：2026-01）", "2026-01")
-
-# 画像アップロード
-uploaded_file = st.file_uploader("シフト表の画像をアップロード", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("シフト表をアップロード", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption='アップロード画像', use_container_width=True)
     
     if st.button("🚀 解析スタート"):
-        with st.spinner("AIが解析中...（gemini-pro-vision使用）"):
+        with st.spinner("AIが解析中..."):
             try:
-                # 安定版モデルを指定
+                # ★ここで最新モデルを指定★
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 prompt = f"""
                 この画像はシフト表です。以下のデータをJSON形式で抽出してください。
                 ターゲット名: {my_name}
-                
-                【抽出ルール】
-                1. 日付は"{year_month}-01"形式
-                2. 時間は"09:30"形式 (9.5→09:30, 20.0→20:00)
-                3. 公休は無視
-                4. 出力は純粋なJSONリスト形式のみ（```json は不要）
+                日付は"{year_month}-01"形式。時間は"09:30"形式。
+                JSONリストのみ出力（```json不要）。
                 """
                 
                 response = model.generate_content([prompt, image])
                 text = response.text.replace("```json", "").replace("```", "").strip()
-                if text.startswith("json"): text = text[4:] # ゴミとり
+                if text.startswith("json"): text = text[4:]
                 
                 data = json.loads(text)
-                st.balloons()
                 st.success(f"🎉 {len(data)}件のシフトが見つかりました！")
                 
                 total_salary = 0
@@ -88,10 +78,18 @@ if uploaded_file:
                     details = urllib.parse.quote(f"予想給与: ¥{int(salary):,}")
                     url = f"[https://www.google.com/calendar/render?action=TEMPLATE&text=](https://www.google.com/calendar/render?action=TEMPLATE&text=){title}&dates={dates}&details={details}"
                     
-                    st.markdown(f"📅 **{item['date']}** ({item['start']}-{item['end']}) → [Googleカレンダー追加]({url})")
+                    st.markdown(f"📅 **{item['date']}** ({item['start']}-{item['end']}) → [カレンダー追加]({url})")
                 
                 st.info(f"💰 予想給与合計: ¥{int(total_salary):,}")
                 
             except Exception as e:
-                st.error(f"解析エラー: {e}")
-                st.write("ヒント: 画像にあなたの名前が写っていないか、AIが読み取れませんでした。")
+                st.error("解析エラーが発生しました。")
+                st.error(f"詳細: {e}")
+                # もしモデルエラーなら、使えるモデル一覧を表示してあげる
+                st.write("👇 あなたのAPIキーで使えるモデル一覧:")
+                try:
+                    for m in genai.list_models():
+                        if 'generateContent' in m.supported_generation_methods:
+                            st.write(f"- {m.name}")
+                except:
+                    st.write("モデル一覧の取得に失敗しました。")

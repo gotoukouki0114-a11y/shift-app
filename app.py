@@ -12,7 +12,7 @@ st.write("画像をアップロードすると、Googleカレンダー用のリ�
 # APIキーの受け取り（Streamlitの「金庫」から取り出す仕組み）
 # ※ここがColabと違うポイント！コードに直接キーを書かないので安全です。
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["AIzaSyDTc-i0dvaEE_iaH4G1MRCvv3KyBcTC458"]
     genai.configure(api_key=api_key)
 except:
     st.error("APIキーが設定されていません。")

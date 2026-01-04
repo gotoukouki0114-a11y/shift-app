@@ -19,8 +19,8 @@ except:
     st.stop()
 
 # ユーザー設定
-my_name = st.text_input("あなたの名前（シフト表の表記通りに）", "飯田")
-hourly_wage = st.number_input("時給", value=1100)
+my_name = st.text_input("あなたの名前（シフト表の表記通りに）", "後藤")
+hourly_wage = st.number_input("時給", value=1200)
 year_month = st.text_input("年月（例：2026-01）", "2026-01")
 
 # 画像アップロード
@@ -30,10 +30,10 @@ if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption='アップロード画像', use_container_width=True)
     
-    if st.button("解析開始"):
-        with st.spinner("AIが解析中..."):
+    if st.button("Press Here!"):
+        with st.spinner("AI is runnning now..."):
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-pro-vision')
                 prompt = f"""
                 この画像からシフトデータをJSONで抽出して。
                 ターゲット: {my_name}

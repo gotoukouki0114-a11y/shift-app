@@ -48,7 +48,7 @@ if uploaded_file:
         with st.spinner("AIが解析中..."):
             try:
                 # ★ここで最新モデルを指定★
-                model = genai.GenerativeModel('gemini-1.5-flash')
+               model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 prompt = f"""
                 この画像はシフト表です。以下のデータをJSON形式で抽出してください。

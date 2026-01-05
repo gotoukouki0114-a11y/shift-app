@@ -5,19 +5,9 @@ import json
 import urllib.parse
 from datetime import datetime
 
+# ページ設定
 st.set_page_config(page_title="シフト読み取りアプリ", page_icon="📅")
 st.title("📅 シフト読み取りアプリ")
-
-# --- 🛠 システム診断エリア ---
-with st.expander("🛠 システム診断（エラー時はここを見て！）", expanded=False):
-    st.write(f"Streamlit Version: {st.__version__}")
-    # ライブラリのバージョンを表示
-    try:
-        st.write(f"Google Generative AI Version: {genai.__version__}")
-        if genai.__version__ < "0.8.3":
-            st.error("⚠️ ライブラリが古いです！requirements.txtを確認してください。")
-    except:
-        st.write("バージョン確認不可")
 
 # --- 🔑 APIキー設定 ---
 try:
@@ -27,7 +17,8 @@ try:
 
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    st.success(f"✅ APIキー接続OK！ (Version: {genai.__version__})")
+    # 接続テストも兼ねてバージョン表示
+    st.success(f"✅ システム稼働中 (AI Tool Version: {genai.__version__})")
 
 except Exception as e:
     st.error(f"❌ 設定エラー: {e}")
@@ -45,10 +36,10 @@ if uploaded_file:
     st.image(image, caption='アップロード画像', use_container_width=True)
     
     if st.button("🚀 解析スタート"):
-        with st.spinner("AIが解析中..."):
+        with st.spinner("最新AI (gemini-2.5-flash) が解析中..."):
             try:
                 # ★ここで最新モデルを指定★
-               model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 prompt = f"""
                 この画像はシフト表です。以下のデータをJSON形式で抽出してください。
@@ -62,6 +53,7 @@ if uploaded_file:
                 if text.startswith("json"): text = text[4:]
                 
                 data = json.loads(text)
+                st.balloons() # 成功時に風船を飛ばす演出
                 st.success(f"🎉 {len(data)}件のシフトが見つかりました！")
                 
                 total_salary = 0
@@ -84,12 +76,4 @@ if uploaded_file:
                 
             except Exception as e:
                 st.error("解析エラーが発生しました。")
-                st.error(f"詳細: {e}")
-                # もしモデルエラーなら、使えるモデル一覧を表示してあげる
-                st.write("👇 あなたのAPIキーで使えるモデル一覧:")
-                try:
-                    for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            st.write(f"- {m.name}")
-                except:
-                    st.write("モデル一覧の取得に失敗しました。")
+                st.write(f"エラー詳細: {e}")

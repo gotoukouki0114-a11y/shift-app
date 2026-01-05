@@ -11,8 +11,9 @@ st.title("📅 シフト読み取りアプリ")
 
 # --- 🔑 APIキー設定 ---
 try:
+    # Secretsから安全にキーを取得
     if "GEMINI_API_KEY" not in st.secrets:
-        st.error("❌ エラー: APIキーが見つかりません。")
+        st.error("❌ エラー: SecretsにAPIキーが設定されていません。")
         st.stop()
 
     api_key = st.secrets["GEMINI_API_KEY"]
@@ -40,20 +41,24 @@ if uploaded_file:
                 # モデル指定
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
+                # ★ここで「9.5は9:30」と強く教え込む！
                 prompt = f"""
-                この画像はシフト表です。以下のデータをJSON形式で抽出してください。
+                あなたは優秀なOCRアシスタントです。このシフト表画像からデータを抽出してください。
                 ターゲット名: {my_name}
                 
-                【超重要ルール】
-                1. 日付は"{year_month}-01"形式
-                2. 開始時間は"start"、終了時間は"end"というキー名にする。
-                3. 時間は"09:30"形式 (9.5→09:30)。
-                4. JSONリストのみ出力（```json不要）。
+                【超重要：時間のルール】
+                1. 数字の「小数点表記」は「時間:分」に変換すること。
+                   - 例: 9.5  → 09:30
+                   - 例: 12.5 → 12:30
+                   - 例: 20.0 → 20:00
+                   - 例: 18   → 18:00
+                2. 日付は"{year_month}-01"形式。
+                3. JSONリストのみ出力（```json不要）。
                 
-                例:
+                【出力フォーマット例】
                 [
-                  {{"date": "2026-01-01", "start": "09:00", "end": "18:00"}},
-                  {{"date": "2026-01-02", "start": "12:00", "end": "21:00"}}
+                  {{"date": "2026-01-01", "start": "09:30", "end": "18:00"}},
+                  {{"date": "2026-01-02", "start": "12:30", "end": "21:00"}}
                 ]
                 """
                 
@@ -67,19 +72,17 @@ if uploaded_file:
                 st.balloons()
                 st.success(f"🎉 {len(data)}件のシフトが見つかりました！")
                 
-                # --- 🛠 デバッグ用：AIが読み取った中身を見る ---
-                with st.expander("🔍 AIが読み取った生データを確認する"):
+                # --- デバッグ用 ---
+                with st.expander("🔍 読み取りデータの確認"):
                     st.write(data)
-                # ---------------------------------------------
+                # -----------------
 
                 total_salary = 0
                 
-                # データを1行ずつ処理
                 for item in data:
                     try:
-                        # データの安全確認（ここが追加ポイント！）
+                        # データの安全確認
                         if "start" not in item or "end" not in item:
-                            st.warning(f"⚠️ 読み取れない行がありました（スキップします）: {item}")
                             continue
 
                         start_str = f"{item['date']} {item['start']}"
@@ -88,18 +91,15 @@ if uploaded_file:
                         start = datetime.strptime(start_str, "%Y-%m-%d %H:%M")
                         end = datetime.strptime(end_str, "%Y-%m-%d %H:%M")
                         
-                        # 給与計算
                         hours = (end - start).seconds / 3600
                         salary = hours * hourly_wage
                         total_salary += salary
                         
-                        # リンク作成
                         title = urllib.parse.quote(f"バイト({item['start']}-{item['end']})")
                         dates = start.strftime("%Y%m%dT%H%M00") + "/" + end.strftime("%Y%m%dT%H%M00")
                         details = urllib.parse.quote(f"予想給与: ¥{int(salary):,}")
                         url = f"[https://www.google.com/calendar/render?action=TEMPLATE&text=](https://www.google.com/calendar/render?action=TEMPLATE&text=){title}&dates={dates}&details={details}"
                         
-                        # 画面に表示
                         st.markdown(f"📅 **{item['date']}** ({item['start']}-{item['end']}) → [カレンダー追加]({url})")
                     
                     except Exception as e:
